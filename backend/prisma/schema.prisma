@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      Role     @default(LANDLORD)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  listings Listing[]
+  ratings  Rating[]
+
+  @@map("users")
+}
+
+model Tenant {
+  id             Int      @id @default(autoincrement())
+  name           String
+  nationalIdHash String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  ratings Rating[]
+
+  @@map("tenants")
+}
+
+model Listing {
+  id         Int      @id @default(autoincrement())
+  title      String
+  rent       Decimal  @db.Decimal(10, 2)
+  location   String
+  landlordId Int
+  pictures   String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  landlord User @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+
+  @@map("listings")
+}
+
+model Rating {
+  id         Int      @id @default(autoincrement())
+  score      Int      @db.SmallInt // 1-5 rating
+  comment    String?
+  proofUrl   String?
+  tenantId   Int
+  landlordId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  landlord User   @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([tenantId, landlordId]) // One rating per tenant per landlord
+  @@map("ratings")
+}
+
+enum Role {
+  LANDLORD
+  ADMIN
+} 

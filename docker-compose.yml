@@ -1,0 +1,117 @@
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: rentguard-db
+    environment:
+      POSTGRES_DB: rentguard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: example
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: rentguard-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Backend API (NestJS)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rentguard-api
+    environment:
+      DATABASE_URL: postgres://postgres:example@db:5432/rentguard
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BUCKET_NAME: rentguard-images
+      NODE_ENV: development
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run start:dev
+
+  # Frontend (Next.js)
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rentguard-web
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:3001
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - internal
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: rentguard-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web
+    networks:
+      - internal
+
+volumes:
+  pgdata:
+    driver: local
+  minio-data:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge 
