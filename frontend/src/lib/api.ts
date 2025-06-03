@@ -109,13 +109,13 @@ export const listingsApi = {
 export const uploadApi = {
   uploadImages: async (files: File[]) => {
     const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
+    files.forEach((file) => formData.append('images', file));
     
     const response = await api.post('/upload/images', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
-    return response.data;
+    return response.data.urls;
   },
 }; 
