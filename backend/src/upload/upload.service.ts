@@ -11,9 +11,12 @@ export class UploadService {
   constructor(private configService: ConfigService) {
     this.bucketName = this.configService.get('MINIO_BUCKET_NAME', 'rentguard-images');
     
+    // Use internal docker hostname for MinIO client connection
+    const internalEndpoint = this.configService.get('MINIO_ENDPOINT', 'minio:9000');
+    
     this.minioClient = new Minio.Client({
-      endPoint: this.configService.get('MINIO_ENDPOINT', 'localhost:9000').split(':')[0],
-      port: parseInt(this.configService.get('MINIO_ENDPOINT', 'localhost:9000').split(':')[1] || '9000'),
+      endPoint: internalEndpoint.split(':')[0],
+      port: parseInt(internalEndpoint.split(':')[1] || '9000'),
       useSSL: this.configService.get('MINIO_USE_SSL', 'false') === 'true',
       accessKey: this.configService.get('MINIO_ROOT_USER', 'minioadmin'),
       secretKey: this.configService.get('MINIO_ROOT_PASSWORD', 'minioadmin'),
@@ -69,12 +72,13 @@ export class UploadService {
           }
         );
 
-        // Return the URL
-        const endpoint = this.configService.get('MINIO_ENDPOINT', 'localhost:9000');
+        // Return the public URL (browser-accessible)
+        // Use public endpoint for browser access, fallback to localhost for development
+        const publicEndpoint = this.configService.get('MINIO_PUBLIC_ENDPOINT', 'localhost:9000');
         const useSSL = this.configService.get('MINIO_USE_SSL', 'false') === 'true';
         const protocol = useSSL ? 'https' : 'http';
         
-        return `${protocol}://${endpoint}/${this.bucketName}/${fileName}`;
+        return `${protocol}://${publicEndpoint}/${this.bucketName}/${fileName}`;
       } catch (error) {
         console.error('Error uploading file to MinIO:', error);
         throw new BadRequestException(`Failed to upload file: ${file.originalname}`);

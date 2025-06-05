@@ -80,15 +80,21 @@ export default function CreateListingPage() {
     }
 
     setIsSubmitting(true);
+    let uploadToastId: string | undefined;
 
     try {
       let pictureUrls: string[] = [];
 
       // Upload images if any
       if (selectedFiles.length > 0) {
-        toast.loading('Uploading images...');
-        pictureUrls = await uploadApi.uploadImages(selectedFiles);
-        toast.dismiss();
+        uploadToastId = toast.loading('Uploading images...');
+        try {
+          pictureUrls = await uploadApi.uploadImages(selectedFiles);
+          toast.success('Images uploaded successfully!', { id: uploadToastId });
+        } catch (uploadError: any) {
+          toast.error('Failed to upload images: ' + (uploadError.response?.data?.message || uploadError.message), { id: uploadToastId });
+          throw uploadError;
+        }
       }
 
       // Create listing
@@ -99,15 +105,34 @@ export default function CreateListingPage() {
         pictures: pictureUrls,
       };
 
+      console.log('Creating listing with data:', listingData);
       await listingsApi.create(listingData);
       toast.success('Listing created successfully!');
       router.push('/dashboard');
 
     } catch (error: any) {
       console.error('Error creating listing:', error);
-      toast.error(error.response?.data?.message || 'Failed to create listing');
+      
+      // Dismiss upload toast if it exists and listing creation fails
+      if (uploadToastId) {
+        toast.dismiss(uploadToastId);
+      }
+      
+      // Show specific error message
+      if (error.response?.status === 401) {
+        toast.error('You need to be logged in to create a listing');
+        router.push('/auth/signin');
+      } else if (error.response?.status === 400) {
+        toast.error('Please check your input data: ' + (error.response?.data?.message || 'Invalid data'));
+      } else {
+        toast.error(error.response?.data?.message || error.message || 'Failed to create listing');
+      }
     } finally {
       setIsSubmitting(false);
+      // Ensure any remaining toasts are dismissed
+      if (uploadToastId) {
+        toast.dismiss(uploadToastId);
+      }
     }
   };
 
@@ -154,10 +179,14 @@ export default function CreateListingPage() {
                 className="input-field mt-1"
                 placeholder="2500"
                 min="0"
+                max="9999999.99"
                 step="0.01"
                 required
                 disabled={isSubmitting}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum: RM 9,999,999.99
+              </p>
             </div>
 
             <div>

@@ -41,7 +41,7 @@ model Tenant {
 model Listing {
   id         Int      @id @default(autoincrement())
   title      String
-  rent       Decimal  @db.Decimal(10, 2)
+  rent       Decimal  @db.Decimal(12, 2)
   location   String
   landlordId Int
   pictures   String[] @default([])

@@ -15,7 +15,11 @@ async function bootstrap() {
 
   // CORS configuration
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: [
+      'http://localhost:3000',  // Direct frontend access
+      'http://localhost',       // Nginx proxy
+      'http://localhost:80',    // Explicit port 80
+    ],
     credentials: true,
   });
 

@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Use relative URL since Next.js rewrites handle the proxy
-const API_BASE = '/api';
+// Use the correct API base URL depending on environment
+const API_BASE = typeof window !== 'undefined' 
+  ? '/api'  // Browser: use nginx proxy
+  : process.env.NEXT_PUBLIC_API_BASE || 'http://api:3001/api'; // Server: use internal docker network
 
 // Create axios instance
 export const api = axios.create({
@@ -13,9 +15,11 @@ export const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
@@ -24,7 +28,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       window.location.href = '/auth/signin';

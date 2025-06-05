@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsArray, IsOptional, MinLength, Min } from 'class-validator';
+import { IsString, IsNumber, IsArray, IsOptional, MinLength, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -14,10 +14,13 @@ export class CreateListingDto {
   @ApiProperty({
     example: 2500.00,
     description: 'Monthly rent amount in MYR',
+    minimum: 0,
+    maximum: 9999999.99,
   })
   @IsNumber()
   @Type(() => Number)
   @Min(0)
+  @Max(9999999.99)
   rent: number;
 
   @ApiProperty({

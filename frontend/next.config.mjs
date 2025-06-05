@@ -24,6 +24,7 @@ const nextConfig = {
       },
     ];
   },
+  // Remove the rewrite for Docker deployment - nginx handles API routing
   typescript: {
     // !! WARN !!
     // Dangerously allow production builds to successfully complete even if
